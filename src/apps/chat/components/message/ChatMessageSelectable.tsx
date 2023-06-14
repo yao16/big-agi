@@ -4,7 +4,7 @@ import { Box, Button, Checkbox, IconButton, ListItem, Sheet, Typography, useThem
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
-import { DMessage } from '@/common/state/store-chats';
+import { DMessage } from '~/common/state/store-chats';
 
 import { TokenBadge } from '../composer/TokenBadge';
 import { makeAvatar, messageBackground } from './ChatMessage';
@@ -60,7 +60,7 @@ export function ChatMessageSelectable(props: { message: DMessage, isBottom: bool
 
   const background = messageBackground(theme, messageRole, !!messageUpdated, isAssistantError);
 
-  const avatarEl: JSX.Element | null = React.useMemo(() =>
+  const avatarEl: React.JSX.Element | null = React.useMemo(() =>
       makeAvatar(messageAvatar, messageRole, messageOriginLLM, messagePurposeId, messageSender, messageTyping, 'sm'),
     [messageAvatar, messageOriginLLM, messagePurposeId, messageRole, messageSender, messageTyping],
   );
