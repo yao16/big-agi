@@ -3,9 +3,9 @@ import { shallow } from 'zustand/shallow';
 
 import { Box, Button, Card, Grid, IconButton, ListDivider, ListItemDecorator, Menu, MenuItem, Stack, Textarea, Tooltip, Typography, useTheme } from '@mui/joy';
 import { ColorPaletteProp, SxProps, VariantProp } from '@mui/joy/styles/types';
-import ClearIcon from '@mui/icons-material/Clear';
 import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
 import DataArrayIcon from '@mui/icons-material/DataArray';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import MicIcon from '@mui/icons-material/Mic';
@@ -105,7 +105,7 @@ const SentMessagesMenu = (props: {
   onClear: () => void,
 }) =>
   <Menu
-    variant='plain' color='neutral' size='md' placement='top-end' sx={{ minWidth: 320, maxWidth: '100dvw', overflow: 'hidden' }}
+    variant='plain' color='neutral' size='md' placement='top-end' sx={{ minWidth: 320, maxWidth: '100dvw', maxHeight: 'calc(100dvh - 56px)', overflowY: 'auto' }}
     open={!!props.anchorEl} anchorEl={props.anchorEl} onClose={props.onClose}>
 
     <MenuItem color='neutral' selected>Reuse messages 💬</MenuItem>
@@ -113,15 +113,19 @@ const SentMessagesMenu = (props: {
     <ListDivider />
 
     {props.messages.map((item, index) =>
-      <MenuItem key={'composer-sent-' + index} onClick={() => props.onPaste(item.text)} sx={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline', overflow: 'hidden' }}>
+      <MenuItem
+        key={'composer-sent-' + index}
+        onClick={() => { props.onPaste(item.text); props.onClose(); }}
+        sx={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline', overflow: 'hidden' }}
+      >
         {item.count > 1 && <span style={{ marginRight: 1 }}>({item.count})</span>} {item.text?.length > 70 ? item.text.slice(0, 68) + '...' : item.text}
       </MenuItem>)}
 
     <ListDivider />
 
     <MenuItem onClick={props.onClear}>
-      <ListItemDecorator><ClearIcon /></ListItemDecorator>
-      Clear all
+      <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
+      Clear sent messages history
     </MenuItem>
 
   </Menu>;
@@ -158,7 +162,7 @@ export function Composer(props: {
   // external state
   const theme = useTheme();
   const enterToSend = useUIPreferencesStore(state => state.enterToSend);
-  const { sentMessages, appendSentMessage, clearSentMessages } = useComposerStore();
+  const { sentMessages, appendSentMessage, clearSentMessages, startupText, setStartupText } = useComposerStore();
   const { assistantTyping, tokenCount: conversationTokenCount, stopTyping } = useChatStore(state => {
     const conversation = state.conversations.find(conversation => conversation.id === props.conversationId);
     return {
@@ -168,6 +172,14 @@ export function Composer(props: {
     };
   }, shallow);
   const { chatLLMId, chatLLM } = useChatLLM();
+
+  // Effect: load initial text if queued up (e.g. by /share)
+  React.useEffect(() => {
+    if (startupText) {
+      setStartupText(null);
+      setComposeText(startupText);
+    }
+  }, [startupText, setStartupText]);
 
   // derived state
   const tokenLimit = chatLLM?.contextTokens || 0;
@@ -194,7 +206,7 @@ export function Composer(props: {
 
   const handleStopClicked = () => props.conversationId && stopTyping(props.conversationId);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleTextareaKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       const shiftOrAlt = e.shiftKey || e.altKey;
       if (enterToSend ? !shiftOrAlt : shiftOrAlt) {
@@ -284,10 +296,10 @@ export function Composer(props: {
   };
 
 
-  const handlePasteFromClipboard = async () => {
+  const handlePasteButtonClicked = async () => {
     for (const clipboardItem of await navigator.clipboard.read()) {
 
-      // find the text/html item if any
+      // when pasting html, only process tables as markdown (e.g. from Excel), or fallback to text
       try {
         const htmlItem = await clipboardItem.getType('text/html');
         const htmlString = await htmlItem.text();
@@ -299,7 +311,7 @@ export function Composer(props: {
         }
         // TODO: paste html to markdown (tried Turndown, but the gfm plugin is not good - need to find another lib with minimal footprint)
       } catch (error) {
-        // ignore missing html
+        // ignore missing html: fallback to text/plain
       }
 
       // find the text/plain item if any
@@ -315,6 +327,18 @@ export function Composer(props: {
       // no text/html or text/plain item found
       console.log('Clipboard item has no text/html or text/plain item.', clipboardItem.types, clipboardItem);
     }
+  };
+
+  const handleTextareaCtrlV = async (e: React.ClipboardEvent) => {
+
+    // paste local files
+    if (e.clipboardData.files.length > 0) {
+      e.preventDefault();
+      await loadAndAttachFiles(e.clipboardData.files, []);
+      return;
+    }
+
+    // paste not intercepted, continue with default behavior
   };
 
 
@@ -339,7 +363,7 @@ export function Composer(props: {
     e.stopPropagation();
   };
 
-  const handleMessageDragEnter = (e: React.DragEvent) => {
+  const handleTextareaDragEnter = (e: React.DragEvent) => {
     eatDragEvent(e);
     setIsDragging(true);
   };
@@ -419,13 +443,13 @@ export function Composer(props: {
               </Button>
             </Tooltip>
 
-            <IconButton variant='plain' color='neutral' onClick={handlePasteFromClipboard} sx={{ ...hideOnDesktop }}>
+            <IconButton variant='plain' color='neutral' onClick={handlePasteButtonClicked} sx={{ ...hideOnDesktop }}>
               <ContentPasteGoIcon />
             </IconButton>
             <Tooltip
               variant='solid' placement='top-start'
               title={pasteClipboardLegend}>
-              <Button fullWidth variant='plain' color='neutral' startDecorator={<ContentPasteGoIcon />} onClick={handlePasteFromClipboard}
+              <Button fullWidth variant='plain' color='neutral' startDecorator={<ContentPasteGoIcon />} onClick={handlePasteButtonClicked}
                       sx={{ ...hideOnMobile, justifyContent: 'flex-start' }}>
                 {props.isDeveloperMode ? 'Paste code' : 'Paste'}
               </Button>
@@ -444,10 +468,12 @@ export function Composer(props: {
                 variant='outlined' color={isReAct ? 'info' : 'neutral'}
                 autoFocus
                 minRows={4} maxRows={12}
-                onKeyDown={handleKeyPress}
-                onDragEnter={handleMessageDragEnter}
                 placeholder={textPlaceholder}
-                value={composeText} onChange={(e) => setComposeText(e.target.value)}
+                value={composeText}
+                onChange={(e) => setComposeText(e.target.value)}
+                onDragEnter={handleTextareaDragEnter}
+                onKeyDown={handleTextareaKeyDown}
+                onPasteCapture={handleTextareaCtrlV}
                 slotProps={{
                   textarea: {
                     enterKeyHint: enterToSend ? 'send' : 'enter',
