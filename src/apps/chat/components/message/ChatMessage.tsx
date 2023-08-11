@@ -26,7 +26,7 @@ import { Link } from '~/common/components/Link';
 import { SystemPurposeId, SystemPurposes } from '../../../../data';
 import { copyToClipboard } from '~/common/util/copyToClipboard';
 import { cssRainbowColorKeyframes } from '~/common/theme';
-import { prettyBaseModel } from '~/common/util/conversationToMarkdown';
+import { prettyBaseModel } from '../../trade/trade.markdown';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
 
 import { RenderCode } from './RenderCode';
@@ -34,7 +34,7 @@ import { RenderHtml } from './RenderHtml';
 import { RenderImage } from './RenderImage';
 import { RenderMarkdown } from './RenderMarkdown';
 import { RenderText } from './RenderText';
-import { parseBlocks } from './Block';
+import { parseBlocks } from './blocks';
 
 
 export function messageBackground(theme: Theme, messageRole: DMessage['role'], wasEdited: boolean, unknownAssistantIssue: boolean): string {
