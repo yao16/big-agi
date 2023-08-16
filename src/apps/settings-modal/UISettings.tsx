@@ -2,12 +2,14 @@ import * as React from 'react';
 import { shallow } from 'zustand/shallow';
 
 import { Box, FormControl, FormHelperText, FormLabel, Option, Radio, RadioGroup, Select, Stack, Switch, Tooltip } from '@mui/joy';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import TelegramIcon from '@mui/icons-material/Telegram';
 import ScienceIcon from '@mui/icons-material/Science';
+import TelegramIcon from '@mui/icons-material/Telegram';
 import WidthNormalIcon from '@mui/icons-material/WidthNormal';
 import WidthWideIcon from '@mui/icons-material/WidthWide';
 
+import { Link } from '~/common/components/Link';
 import { hideOnMobile, settingsGap } from '~/common/theme';
 import { isPwa } from '~/common/util/pwaUtils';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
@@ -23,7 +25,7 @@ function LanguageSelect() {
   // external state
   const { preferredLanguage, setPreferredLanguage } = useUIPreferencesStore(state => ({ preferredLanguage: state.preferredLanguage, setPreferredLanguage: state.setPreferredLanguage }), shallow);
 
-  const handleLanguageChanged = (event: any, newValue: string | null) => {
+  const handleLanguageChanged = (_event: any, newValue: string | null) => {
     if (!newValue) return;
     setPreferredLanguage(newValue as string);
 
@@ -177,8 +179,10 @@ export function UISettings() {
 
       <FormControl orientation='horizontal' sx={{ justifyContent: 'space-between' }}>
         <Box>
-          <FormLabel>Goofy labs</FormLabel>
-          <FormHelperText>{goofyLabs ? <>Experiment<ScienceIcon /></> : 'Disabled'}</FormHelperText>
+          <FormLabel component={Link} href='/labs'>
+            Labs <InfoOutlinedIcon sx={{ mx: 0.5 }} />
+          </FormLabel>
+          <FormHelperText>{goofyLabs ? <>UI Experiments <ScienceIcon /></> : <>Disabled <ScienceIcon /></>}</FormHelperText>
         </Box>
         <Switch checked={goofyLabs} onChange={handleGoofyLabsChange}
                 endDecorator={goofyLabs ? 'On' : 'Off'}
