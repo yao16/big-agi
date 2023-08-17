@@ -23,7 +23,7 @@ export function ChatDrawerItems(props: {
 }) {
 
   // local state
-  const [grouping, setGrouping] = React.useState<ListGrouping>('off');
+  const [grouping] = React.useState<ListGrouping>('off');
 
   // external state
   const conversationIDs = useChatStore(state => state.conversations.map(
@@ -36,8 +36,8 @@ export function ChatDrawerItems(props: {
     createConversation: state.createConversation,
     deleteConversation: state.deleteConversation,
   }), shallow);
-  const { goofyLabs, showSymbols } = useUIPreferencesStore(state => ({
-    goofyLabs: state.goofyLabs,
+  const { experimentalLabs, showSymbols } = useUIPreferencesStore(state => ({
+    experimentalLabs: state.experimentalLabs,
     showSymbols: state.zenMode !== 'cleaner',
   }), shallow);
 
@@ -127,7 +127,7 @@ export function ChatDrawerItems(props: {
           isActive={conversationId === props.conversationId}
           isSingle={singleChat}
           showSymbols={showSymbols}
-          maxChatMessages={goofyLabs ? maxChatMessages : 0}
+          maxChatMessages={experimentalLabs ? maxChatMessages : 0}
           conversationActivate={handleConversationActivate}
           conversationDelete={handleConversationDelete}
         />)}
