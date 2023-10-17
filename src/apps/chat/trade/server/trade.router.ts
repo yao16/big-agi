@@ -1,8 +1,8 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
-import { createTRPCRouter, publicProcedure } from '~/modules/trpc/trpc.server';
-import { fetchTextOrTRPCError } from '~/modules/trpc/trpc.serverutils';
+import { createTRPCRouter, publicProcedure } from '~/server/api/trpc.server';
+import { fetchTextOrTRPCError } from '~/server/api/trpc.serverutils';
 
 import { chatGptImportConversation, chatGptSharedChatSchema } from './import.chatgpt';
 import { postToPasteGGOrThrow } from './publish.pastegg';
@@ -30,7 +30,7 @@ const publishToOutputSchema = z.object({
 export type PublishedSchema = z.infer<typeof publishToOutputSchema>;
 
 
-export const sharingRouter = createTRPCRouter({
+export const tradeRouter = createTRPCRouter({
 
   /**
    * ChatGPT Shared Chats Importer

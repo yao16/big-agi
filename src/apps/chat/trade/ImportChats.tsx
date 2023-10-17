@@ -4,15 +4,16 @@ import { fileOpen, FileWithHandle } from 'browser-fs-access';
 import { Box, Button, FormControl, FormLabel, Input, Sheet, Typography } from '@mui/joy';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 
-import type { ChatGptSharedChatSchema } from '~/modules/sharing/import.chatgpt';
-import { apiAsync } from '~/modules/trpc/trpc.client';
+import { apiAsync } from '~/common/util/trpc.client';
 
 import { Brand } from '~/common/brand';
+import { InlineError } from '~/common/components/InlineError';
 import { OpenAIIcon } from '~/common/components/icons/OpenAIIcon';
 import { createDConversation, createDMessage, DMessage, useChatStore } from '~/common/state/store-chats';
 
+import type { ChatGptSharedChatSchema } from './server/import.chatgpt';
 import { ImportedOutcome, ImportOutcomeModal } from './ImportOutcomeModal';
-import { restoreDConversationsFromJSON } from './trade.json';
+import { loadAllConversationsFromJson } from './trade.client';
 
 
 export type ImportConfig = { dir: 'import' };
@@ -49,7 +50,7 @@ export function ImportConversations(props: { onClose: () => void }) {
       try {
         const fileString = await blob.text();
         const fileObject = JSON.parse(fileString);
-        restoreDConversationsFromJSON(fileName, fileObject, outcome);
+        loadAllConversationsFromJson(fileName, fileObject, outcome);
       } catch (error: any) {
         outcome.conversations.push({ success: false, fileName, error: `Invalid file: ${error?.message || error?.toString() || 'unknown error'}` });
       }
@@ -76,7 +77,7 @@ export function ImportConversations(props: { onClose: () => void }) {
     // load the conversation
     let conversationId: string, data: ChatGptSharedChatSchema;
     try {
-      ({ conversationId, data } = await apiAsync.sharing.importChatGptShare.query({ url: chatGptUrl }));
+      ({ conversationId, data } = await apiAsync.trade.importChatGptShare.query({ url: chatGptUrl }));
     } catch (error) {
       outcome.conversations.push({ fileName: 'chatgpt', success: false, error: (error as any)?.message || error?.toString() || 'unknown error' });
       setImportOutcome(outcome);
@@ -145,7 +146,10 @@ export function ImportConversations(props: { onClose: () => void }) {
     {/* [chatgpt] data & controls */}
     {chatGptEdit && <Sheet variant='soft' color='primary' sx={{ display: 'flex', flexDirection: 'column', borderRadius: 'md', p: 1, gap: 1 }}>
 
-      <OpenAIIcon sx={{ mx: 'auto', my: 1 }} />
+      <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+        <InlineError error='Note: OpenAI seems to be blocking importing shared chats at the moment. Proceeding is likely to result in an HTTP error.' severity='danger' />
+        <OpenAIIcon sx={{ mx: 'auto', my: 1 }} />
+      </Box>
 
       <FormControl>
         <FormLabel>
