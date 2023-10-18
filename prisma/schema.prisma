@@ -22,5 +22,32 @@ datasource db {
 
 model Sharing {
   id String @id @default(uuid())
-  // TODO: to be defined later
+
+  ownerId  String
+  isPublic Boolean @default(true)
+
+  dataType SharingDataType
+  dataSize Int
+  data     Json
+
+  upVotes    Int @default(0)
+  downVotes  Int @default(0)
+  flagsCount Int @default(0)
+  readCount  Int @default(0)
+  writeCount Int @default(1)
+
+  // time-based expiration
+  expiresAt DateTime?
+
+  // manual deletion
+  deletionKey String
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SharingDataType {
+  CHAT_V1
 }

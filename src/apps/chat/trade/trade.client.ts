@@ -1,10 +1,10 @@
 import { fileSave } from 'browser-fs-access';
 
-import { defaultSystemPurposeId, SystemPurposes } from '../../../data';
+import { defaultSystemPurposeId, SystemPurposeId, SystemPurposes } from '../../../data';
 
 import { DModelSource, useModelsStore } from '~/modules/llms/store-llms';
 
-import { DConversation, useChatStore } from '~/common/state/store-chats';
+import { DConversation, DMessage, useChatStore } from '~/common/state/store-chats';
 import { prettyBaseModel } from '~/common/util/modelUtils';
 
 import { ImportedOutcome } from './ImportOutcomeModal';
@@ -23,11 +23,11 @@ export function loadAllConversationsFromJson(fileName: string, obj: any, outcome
   if (hasConversations && !hasMessages) {
     const payload = obj as ExportedAllJsonV1;
     for (let conversation of payload.conversations)
-      loadConversationFromJson(fileName, conversation, outcome);
+      pushOutcomeFromJsonV1(fileName, conversation, outcome);
   }
   // parse ExportedConversationJsonV1
   else if (hasMessages && !hasConversations) {
-    loadConversationFromJson(fileName, obj as ExportedConversationJsonV1, outcome);
+    pushOutcomeFromJsonV1(fileName, obj as ExportedConversationJsonV1, outcome);
   }
   // invalid
   else {
@@ -35,11 +35,19 @@ export function loadAllConversationsFromJson(fileName: string, obj: any, outcome
   }
 }
 
-function loadConversationFromJson(fileName: string, part: Partial<DConversation>, outcome: ImportedOutcome) {
-  if (!part || !part.id || !part.messages) {
+function pushOutcomeFromJsonV1(fileName: string, part: ExportedConversationJsonV1, outcome: ImportedOutcome) {
+  const restored = createConversationFromJsonV1(part);
+  if (!restored)
     outcome.conversations.push({ success: false, fileName, error: `Invalid conversation: ${part.id}` });
-    return;
-  }
+  else
+    outcome.conversations.push({ success: true, fileName, conversation: restored });
+}
+
+
+// NOTE: the tokenCount was removed while still in the JsonV1 format, so here we add it back, for backwards compat
+export function createConversationFromJsonV1(part: ExportedConversationJsonV1 & { tokenCount?: number }) {
+  if (!part || !part.id || !part.messages)
+    return null;
   const restored: DConversation = {
     id: part.id,
     messages: part.messages,
@@ -53,7 +61,7 @@ function loadConversationFromJson(fileName: string, part: Partial<DConversation>
     abortController: null,
     ephemerals: [],
   };
-  outcome.conversations.push({ success: true, fileName, conversation: restored });
+  return restored;
 }
 
 
@@ -64,7 +72,7 @@ function loadConversationFromJson(fileName: string, part: Partial<DConversation>
 export async function downloadAllConversationsJson() {
   // conversations and
   const payload: ExportedAllJsonV1 = {
-    conversations: useChatStore.getState().conversations.map(cleanConversationForExport),
+    conversations: useChatStore.getState().conversations.map(conversationToJsonV1),
     models: { sources: useModelsStore.getState().sources },
   };
   const json = JSON.stringify(payload);
@@ -82,7 +90,7 @@ export async function downloadAllConversationsJson() {
  */
 export async function downloadConversationJson(conversation: DConversation) {
   // remove fields from the export
-  const exportableConversation: ExportedConversationJsonV1 = cleanConversationForExport(conversation);
+  const exportableConversation: ExportedConversationJsonV1 = conversationToJsonV1(conversation);
   const json = JSON.stringify(exportableConversation, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
 
@@ -90,9 +98,9 @@ export async function downloadConversationJson(conversation: DConversation) {
   await fileSave(blob, { fileName: `conversation-${conversation.id}.json`, extensions: ['.json'] });
 }
 
-function cleanConversationForExport(_conversation: DConversation): Partial<DConversation> {
+export function conversationToJsonV1(_conversation: DConversation): ExportedConversationJsonV1 {
   // remove fields from the export
-  const { abortController, ephemerals, ...conversation } = _conversation;
+  const { abortController, ephemerals, tokenCount, ...conversation } = _conversation;
   return conversation;
 }
 
@@ -132,7 +140,15 @@ export function conversationToMarkdown(conversation: DConversation, hideSystemMe
 
 /// do not change these - consider people's backups
 
-type ExportedConversationJsonV1 = Partial<DConversation>;
+type ExportedConversationJsonV1 = {
+  id: string;
+  messages: DMessage[];
+  systemPurposeId: SystemPurposeId;
+  userTitle?: string;
+  autoTitle?: string;
+  created: number;
+  updated: number | null;
+}
 
 type ExportedAllJsonV1 = {
   conversations: ExportedConversationJsonV1[];

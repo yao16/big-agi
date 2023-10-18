@@ -4,7 +4,7 @@ import { fileOpen, FileWithHandle } from 'browser-fs-access';
 import { Box, Button, FormControl, FormLabel, Input, Sheet, Typography } from '@mui/joy';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 
-import { apiAsync } from '~/common/util/trpc.client';
+import { apiAsyncNode } from '~/common/util/trpc.client';
 
 import { Brand } from '~/common/brand';
 import { InlineError } from '~/common/components/InlineError';
@@ -59,7 +59,7 @@ export function ImportConversations(props: { onClose: () => void }) {
     // import conversations (warning - will overwrite things)
     for (let conversation of [...outcome.conversations].reverse()) {
       if (conversation.success)
-        useChatStore.getState().importConversation(conversation.conversation);
+        useChatStore.getState().importConversation(conversation.conversation, false);
     }
 
     // show the outcome of the import
@@ -77,7 +77,7 @@ export function ImportConversations(props: { onClose: () => void }) {
     // load the conversation
     let conversationId: string, data: ChatGptSharedChatSchema;
     try {
-      ({ conversationId, data } = await apiAsync.trade.importChatGptShare.query({ url: chatGptUrl }));
+      ({ conversationId, data } = await apiAsyncNode.trade.importChatGptShare.query({ url: chatGptUrl }));
     } catch (error) {
       outcome.conversations.push({ fileName: 'chatgpt', success: false, error: (error as any)?.message || error?.toString() || 'unknown error' });
       setImportOutcome(outcome);
@@ -109,7 +109,7 @@ export function ImportConversations(props: { onClose: () => void }) {
     // outcome
     const success = conversation.messages.length >= 1;
     if (success) {
-      useChatStore.getState().importConversation(conversation);
+      useChatStore.getState().importConversation(conversation, false);
       outcome.conversations.push({ success: true, fileName: 'chatgpt', conversation });
     } else
       outcome.conversations.push({ success: false, fileName: 'chatgpt', error: `Empty conversation` });
