@@ -1,18 +1,13 @@
 import * as React from 'react';
 import { shallow } from 'zustand/shallow';
 
-import { Box, Button, ButtonGroup, Card, Grid, IconButton, ListDivider, ListItemDecorator, MenuItem, Stack, Textarea, Tooltip, Typography, useTheme } from '@mui/joy';
+import { Box, Button, ButtonGroup, Card, Grid, IconButton, Stack, Textarea, Tooltip, Typography, useTheme } from '@mui/joy';
 import { ColorPaletteProp, SxProps, VariantProp } from '@mui/joy/styles/types';
 import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import ContentPasteGoIcon from '@mui/icons-material/ContentPasteGo';
-import DataArrayIcon from '@mui/icons-material/DataArray';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import MicIcon from '@mui/icons-material/Mic';
 import PanToolIcon from '@mui/icons-material/PanTool';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SendIcon from '@mui/icons-material/Send';
 import StopOutlinedIcon from '@mui/icons-material/StopOutlined';
@@ -22,8 +17,6 @@ import { ContentReducer } from '~/modules/aifn/summarize/ContentReducer';
 import { LLMOptionsOpenAI } from '~/modules/llms/vendors/openai/openai.vendor';
 import { useChatLLM } from '~/modules/llms/store-llms';
 
-import { CloseableMenu } from '~/common/components/CloseableMenu';
-import { ConfirmationModal } from '~/common/components/ConfirmationModal';
 import { SpeechResult, useSpeechRecognition } from '~/common/components/useSpeechRecognition';
 import { countModelTokens } from '~/common/util/token-counter';
 import { extractFilePathsWithCommonRadix } from '~/common/util/dropTextUtils';
@@ -31,6 +24,7 @@ import { hideOnDesktop, hideOnMobile } from '~/common/theme';
 import { htmlTableToMarkdown } from '~/common/util/htmlTableToMarkdown';
 import { pdfToText } from '~/common/util/pdfToText';
 import { useChatStore } from '~/common/state/store-chats';
+import { useGlobalShortcut } from '~/common/components/useGlobalShortcut';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
 
 import { CameraCaptureButton } from './CameraCaptureButton';
@@ -59,28 +53,25 @@ const expandPromptTemplate = (template: string, dict: object) => (inputValue: st
 
 const attachFileLegend =
   <Stack sx={{ p: 1, gap: 1 }}>
-    <Box sx={{ mb: 1, textAlign: 'center' }}>
-      <b>Attach a file to the message</b>
+    <Box sx={{ mb: 1 }}>
+      <b>Attach a file</b>
     </Box>
     <table>
       <tbody>
       <tr>
-        <td width={32}><PictureAsPdfIcon /></td>
-        <td><b>PDF</b></td>
-        <td width={36} align='center' style={{ opacity: 0.5 }}>→</td>
-        <td>📝 Text (summarized)</td>
+        <td><b>Text</b></td>
+        <td align='center' style={{ opacity: 0.5 }}>→</td>
+        <td>📝 As-is</td>
       </tr>
       <tr>
-        <td><DataArrayIcon /></td>
         <td><b>Code</b></td>
         <td align='center' style={{ opacity: 0.5 }}>→</td>
         <td>📚 Markdown</td>
       </tr>
       <tr>
-        <td><FormatAlignCenterIcon /></td>
-        <td><b>Text</b></td>
-        <td align='center' style={{ opacity: 0.5 }}>→</td>
-        <td>📝 As-is</td>
+        <td><b>PDF</b></td>
+        <td width={36} align='center' style={{ opacity: 0.5 }}>→</td>
+        <td>📝 Text (summarized)</td>
       </tr>
       </tbody>
     </table>
@@ -90,61 +81,22 @@ const attachFileLegend =
   </Stack>;
 
 const pasteClipboardLegend =
-  <Box sx={{ p: 1 }}>
-    Converts Code and Tables to 📚 Markdown
+  <Box sx={{ p: 1, lineHeight: 2 }}>
+    <b>Paste as 📚 Markdown attachment</b><br />
+    Also converts Code and Tables<br />
+    Ctrl + Shift + V
   </Box>;
 
-
 const MicButton = (props: { variant: VariantProp, color: ColorPaletteProp, onClick: () => void, sx?: SxProps }) =>
-  <Tooltip title='CTRL + M' placement='top'>
+  <Tooltip title='Ctrl + M' placement='top'>
     <IconButton variant={props.variant} color={props.color} onClick={props.onClick} sx={props.sx}>
       <MicIcon />
     </IconButton>
   </Tooltip>;
 
 
-const SentMessagesMenu = (props: {
-  anchorEl: HTMLAnchorElement, onClose: () => void,
-  messages: { date: number; text: string; count: number }[],
-  onPaste: (text: string) => void,
-  onClear: () => void,
-}) =>
-  <CloseableMenu
-    placement='top-end' maxHeightGapPx={56 * 3} noTopPadding sx={{ minWidth: 320, maxWidth: '100dvw' }}
-    open={!!props.anchorEl} anchorEl={props.anchorEl} onClose={props.onClose}
-  >
-
-    <MenuItem variant='solid' selected>
-      Reuse messages 💬
-    </MenuItem>
-
-    <Box sx={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-      {props.messages.map((item, index) =>
-        <MenuItem
-          key={'composer-sent-' + index}
-          onClick={() => {
-            props.onPaste(item.text);
-            props.onClose();
-          }}
-          sx={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', overflowX: 'hidden' }}
-        >
-          {item.count > 1 && <span style={{ marginRight: 1 }}>({item.count})</span>} {item.text?.length > 70 ? item.text.slice(0, 68) + '...' : item.text}
-        </MenuItem>)}
-    </Box>
-
-    <ListDivider />
-
-    <MenuItem onClick={props.onClear}>
-      <ListItemDecorator><DeleteOutlineIcon /></ListItemDecorator>
-      Clear sent messages history
-    </MenuItem>
-
-  </CloseableMenu>;
-
-
 /**
  * A React component for composing and sending messages in a chat-like interface.
- * Supports pasting text and code from the clipboard, and a local log of sent messages.
  *
  * Note: Useful bash trick to generate code from a list of files:
  *       $ for F in *.ts; do echo; echo "\`\`\`$F"; cat $F; echo; echo "\`\`\`"; done | clip
@@ -167,8 +119,6 @@ export function Composer(props: {
   const [reducerText, setReducerText] = React.useState('');
   const [reducerTextTokens, setReducerTextTokens] = React.useState(0);
   const [chatModeMenuAnchor, setChatModeMenuAnchor] = React.useState<HTMLAnchorElement | null>(null);
-  const [sentMessagesAnchor, setSentMessagesAnchor] = React.useState<HTMLAnchorElement | null>(null);
-  const [confirmClearSent, setConfirmClearSent] = React.useState(false);
   const attachmentFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // external state
@@ -177,7 +127,7 @@ export function Composer(props: {
     enterToSend: state.enterToSend,
     experimentalLabs: state.experimentalLabs,
   }), shallow);
-  const { sentMessages, appendSentMessage, clearSentMessages, startupText, setStartupText } = useComposerStore();
+  const { startupText, setStartupText } = useComposerStore();
   const { assistantTyping, tokenCount: conversationTokenCount, stopTyping } = useChatStore(state => {
     const conversation = state.conversations.find(conversation => conversation.id === props.conversationId);
     return {
@@ -211,7 +161,6 @@ export function Composer(props: {
     if (text.length && props.conversationId) {
       setComposeText('');
       props.onSendMessage(props.conversationId, text);
-      appendSentMessage(text);
     }
   };
 
@@ -319,7 +268,7 @@ export function Composer(props: {
 
   const handleCameraOCR = (text: string) => text && setComposeText(expandPromptTemplate(PromptTemplates.PasteMarkdown, { clipboard: text }));
 
-  const handlePasteButtonClicked = async () => {
+  const handlePasteButtonClicked = React.useCallback(async () => {
     for (const clipboardItem of await navigator.clipboard.read()) {
 
       // when pasting html, only process tables as markdown (e.g. from Excel), or fallback to text
@@ -350,7 +299,9 @@ export function Composer(props: {
       // no text/html or text/plain item found
       console.log('Clipboard item has no text/html or text/plain item.', clipboardItem.types, clipboardItem);
     }
-  };
+  }, []);
+
+  useGlobalShortcut('v', true, false, handlePasteButtonClicked);
 
   const handleTextareaCtrlV = async (e: React.ClipboardEvent) => {
 
@@ -362,22 +313,6 @@ export function Composer(props: {
     }
 
     // paste not intercepted, continue with default behavior
-  };
-
-
-  const showSentMessages = (event: React.MouseEvent<HTMLAnchorElement>) => setSentMessagesAnchor(event.currentTarget);
-
-  const hideSentMessages = () => setSentMessagesAnchor(null);
-
-  const handlePasteSent = (text: string) => setComposeText(text);
-
-  const handleClearSent = () => setConfirmClearSent(true);
-
-  const handleCancelClearSent = () => setConfirmClearSent(false);
-
-  const handleConfirmedClearSent = () => {
-    setConfirmClearSent(false);
-    clearSentMessages();
   };
 
 
@@ -437,17 +372,18 @@ export function Composer(props: {
     : /*isProdiaConfigured ?*/ 'Chat · /react · /imagine · drop text files...' /*: 'Chat · /react · drop text files...'*/;
 
   // const isImmediate = props.chatModeId === 'immediate';
+  const isWriteUser = props.chatModeId === 'write-user';
   const isFollowUp = props.chatModeId === 'immediate-follow-up';
   const isReAct = props.chatModeId === 'react';
-  const isWriteUser = props.chatModeId === 'write-user';
+  const isDraw = props.chatModeId === 'draw-imagine';
 
   const chatButton = (
     <Button
-      fullWidth variant={isWriteUser ? 'soft' : 'solid'} color={isReAct ? 'success' : isFollowUp ? 'warning' : 'primary'} disabled={!props.conversationId || !chatLLM}
+      fullWidth variant={isWriteUser ? 'soft' : 'solid'} color={isReAct ? 'success' : (isFollowUp || isDraw) ? 'warning' : 'primary'} disabled={!props.conversationId || !chatLLM}
       onClick={handleSendClicked}
       endDecorator={isWriteUser ? <SendIcon sx={{ fontSize: 18 }} /> : isReAct ? <PsychologyIcon /> : <TelegramIcon />}
     >
-      {isWriteUser ? 'Write' : isReAct ? 'ReAct' : isFollowUp ? 'Chat+' : 'Chat'}
+      {isWriteUser ? 'Write' : isFollowUp ? 'Chat+' : isReAct ? 'ReAct' : isDraw ? 'Draw' : 'Chat'}
     </Button>
   );
 
@@ -598,12 +534,11 @@ export function Composer(props: {
 
             <Box sx={{ display: 'flex', flexDirection: 'row' }}>
 
-              {/* [mobile-only] Sent messages arrow */}
-              {sentMessages.length > 0 && (
-                <IconButton disabled={!!sentMessagesAnchor} onClick={showSentMessages} sx={{ ...hideOnDesktop, mr: { xs: 1, md: 2 } }}>
-                  <KeyboardArrowUpIcon />
-                </IconButton>
-              )}
+              {/* [mobile-only] corner button - placeholder */}
+              {/*<IconButton disabled={} onClick={}*/}
+              {/*            sx={{ ...hideOnDesktop, mr: { xs: 1, md: 2 } }}>*/}
+              {/* Some icon here */}
+              {/*</IconButton>*/}
 
               {/* Send / Stop */}
               {assistantTyping
@@ -616,7 +551,7 @@ export function Composer(props: {
                     Stop
                   </Button>
                 ) : (
-                  <ButtonGroup variant={isWriteUser ? 'solid' : 'solid'} color={isReAct ? 'success' : isFollowUp ? 'warning' : 'primary'} sx={{ flexGrow: 1 }}>
+                  <ButtonGroup variant={isWriteUser ? 'solid' : 'solid'} color={isReAct ? 'success' : (isFollowUp || isDraw) ? 'warning' : 'primary'} sx={{ flexGrow: 1 }}>
                     {chatButton}
                     <IconButton disabled={!props.conversationId || !chatLLM || !!chatModeMenuAnchor} onClick={handleToggleChatMode}>
                       <ExpandLessIcon />
@@ -625,14 +560,14 @@ export function Composer(props: {
                 )}
             </Box>
 
-            {/* [desktop-only] row with Sent Messages button */}
-            <Stack direction='row' spacing={1} sx={{ ...hideOnMobile, flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'flex-end' }}>
-              {sentMessages.length > 0 && (
-                <Button disabled={!!sentMessagesAnchor} fullWidth variant='plain' color='neutral' startDecorator={<KeyboardArrowUpIcon />} onClick={showSentMessages}>
-                  History
-                </Button>
-              )}
-            </Stack>
+            {/* [desktop-only] second row */}
+            {/*<Stack direction='row' spacing={1}*/}
+            {/*       sx={{ ...hideOnMobile, flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'flex-end' }}>*/}
+            {/*    <Button disabled={} fullWidth variant='plain' color='neutral'*/}
+            {/*            startDecorator={<KeyboardArrowUpIcon />} onClick={}>*/}
+            {/*      Placeholder button*/}
+            {/*    </Button>*/}
+            {/*</Stack>*/}
 
           </Stack>
         </Grid>
@@ -647,14 +582,6 @@ export function Composer(props: {
           />
         )}
 
-        {/* Sent messages menu */}
-        {!!sentMessagesAnchor && (
-          <SentMessagesMenu
-            anchorEl={sentMessagesAnchor} messages={sentMessages} onClose={hideSentMessages}
-            onPaste={handlePasteSent} onClear={handleClearSent}
-          />
-        )}
-
         {/* Content reducer modal */}
         {reducerText?.length >= 1 &&
           <ContentReducer
@@ -662,12 +589,6 @@ export function Composer(props: {
             onReducedText={handleContentReducerText} onClose={handleContentReducerClose}
           />
         }
-
-        {/* Clear confirmation modal */}
-        <ConfirmationModal
-          open={confirmClearSent} onClose={handleCancelClearSent} onPositive={handleConfirmedClearSent}
-          confirmationText={'Are you sure you want to clear all your sent messages?'} positiveActionText={'Clear all'}
-        />
 
       </Grid>
     </Box>
