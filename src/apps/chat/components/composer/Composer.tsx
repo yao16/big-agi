@@ -33,7 +33,7 @@ import { useGlobalShortcut } from '~/common/components/useGlobalShortcut';
 import { useUIPreferencesStore, useUIStateStore } from '~/common/state/store-ui';
 
 import { CameraCaptureButton } from './CameraCaptureButton';
-import { ChatModeId } from '../../AppChat';
+import { ChatModeId, useChatModeStore } from '../../store-chatmode';
 import { ChatModeMenu } from './ChatModeMenu';
 import { TokenBadge } from './TokenBadge';
 import { TokenProgressbar } from './TokenProgressbar';
@@ -109,12 +109,12 @@ const CallButtonDesktop = (props: { disabled?: boolean, onClick: () => void, sx?
     Call
   </Button>;
 
-const DrawButtonMobile = (props: { onClick: () => void, sx?: SxProps }) =>
+const DrawOptionsButtonMobile = (props: { onClick: () => void, sx?: SxProps }) =>
   <IconButton variant='soft' color='warning' onClick={props.onClick} sx={props.sx}>
     <FormatPaintIcon />
   </IconButton>;
 
-const DrawButtonDesktop = (props: { onClick: () => void, sx?: SxProps }) =>
+const DrawOptionsButtonDesktop = (props: { onClick: () => void, sx?: SxProps }) =>
   <Button variant='soft' color='warning' onClick={props.onClick} endDecorator={<FormatPaintIcon />} sx={props.sx}>
     Options
   </Button>;
@@ -132,7 +132,6 @@ const DrawButtonDesktop = (props: { onClick: () => void, sx?: SxProps }) =>
  */
 export function Composer(props: {
   conversationId: string | null; messageId: string | null;
-  chatModeId: ChatModeId, setChatModeId: (chatModeId: ChatModeId) => void;
   isDeveloperMode: boolean;
   onSendMessage: (conversationId: string, text: string) => void;
   sx?: SxProps;
@@ -148,6 +147,7 @@ export function Composer(props: {
 
   // external state
   const theme = useTheme();
+  const [chatModeId, setChatModeId] = useChatModeStore(state => [state.chatModeId, state.setChatModeId], shallow);
   const { enterToSend, experimentalLabs } = useUIPreferencesStore(state => ({
     enterToSend: state.enterToSend,
     experimentalLabs: state.experimentalLabs,
@@ -201,9 +201,9 @@ export function Composer(props: {
 
   const handleHideChatMode = () => setChatModeMenuAnchor(null);
 
-  const handleSetChatModeId = (chatModeId: ChatModeId) => {
+  const handleSetChatModeId = (_chatModeId: ChatModeId) => {
     handleHideChatMode();
-    props.setChatModeId(chatModeId);
+    setChatModeId(_chatModeId);
   };
 
   const handleStopClicked = () => props.conversationId && stopTyping(props.conversationId);
@@ -397,12 +397,13 @@ export function Composer(props: {
     console.log('Unhandled Drop event. Contents: ', e.dataTransfer.types.map(t => `${t}: ${e.dataTransfer.getData(t)}`));
   };
 
-  const isImmediate = props.chatModeId === 'immediate';
-  const isWriteUser = props.chatModeId === 'write-user';
+  const isImmediate = chatModeId === 'immediate';
+  const isWriteUser = chatModeId === 'write-user';
   const isChat = isImmediate || isWriteUser;
-  const isFollowUp = props.chatModeId === 'immediate-follow-up';
-  const isReAct = props.chatModeId === 'react';
-  const isDraw = props.chatModeId === 'draw-imagine';
+  const isFollowUp = chatModeId === 'immediate-follow-up';
+  const isReAct = chatModeId === 'react';
+  const isDraw = chatModeId === 'draw-imagine';
+  const isDrawPlus = chatModeId === 'draw-imagine-plus';
 
   const textPlaceholder: string =
     isDraw
@@ -467,7 +468,7 @@ export function Composer(props: {
             <Box sx={{ position: 'relative' }}>
 
               <Textarea
-                variant='outlined' color={isDraw ? 'warning' : isReAct ? 'success' : 'neutral'}
+                variant='outlined' color={(isDraw || isDrawPlus) ? 'warning' : isReAct ? 'success' : 'neutral'}
                 autoFocus
                 minRows={5} maxRows={10}
                 placeholder={textPlaceholder}
@@ -572,7 +573,7 @@ export function Composer(props: {
               />}
 
               {/* [mobile] [corner] Draw button */}
-              {isDraw && <DrawButtonMobile
+              {(isDraw || isDrawPlus) && <DrawOptionsButtonMobile
                 onClick={handleDrawOptionsClicked}
                 sx={{ ...hideOnDesktop, mr: { xs: 1, md: 2 } }}
               />}
@@ -588,13 +589,13 @@ export function Composer(props: {
                     Stop
                   </Button>
                 ) : (
-                  <ButtonGroup variant={isWriteUser ? 'solid' : 'solid'} color={isReAct ? 'success' : (isFollowUp || isDraw) ? 'warning' : 'primary'} sx={{ flexGrow: 1 }}>
+                  <ButtonGroup variant={isWriteUser ? 'solid' : 'solid'} color={isReAct ? 'success' : (isFollowUp || isDraw || isDrawPlus) ? 'warning' : 'primary'} sx={{ flexGrow: 1 }}>
                     <Button
-                      fullWidth variant={isWriteUser ? 'soft' : 'solid'} color={isReAct ? 'success' : (isFollowUp || isDraw) ? 'warning' : 'primary'} disabled={!props.conversationId || !chatLLM}
+                      fullWidth variant={isWriteUser ? 'soft' : 'solid'} color={isReAct ? 'success' : (isFollowUp || isDraw || isDrawPlus) ? 'warning' : 'primary'} disabled={!props.conversationId || !chatLLM}
                       onClick={handleSendClicked}
                       endDecorator={isWriteUser ? <SendIcon sx={{ fontSize: 18 }} /> : isReAct ? <PsychologyIcon /> : <TelegramIcon />}
                     >
-                      {isWriteUser ? 'Write' : isFollowUp ? 'Chat+' : isReAct ? 'ReAct' : isDraw ? 'Draw' : 'Chat'}
+                      {isWriteUser ? 'Write' : isFollowUp ? 'Chat+' : isReAct ? 'ReAct' : isDraw ? 'Draw' : isDrawPlus ? 'Draw+' : 'Chat'}
                     </Button>
                     <IconButton disabled={!props.conversationId || !chatLLM || !!chatModeMenuAnchor} onClick={handleToggleChatMode}>
                       <ExpandLessIcon />
@@ -609,7 +610,7 @@ export function Composer(props: {
 
               {APP_CALL_ENABLED && isChat && <CallButtonDesktop disabled={!props.conversationId || !chatLLM} onClick={handleCallClicked} />}
 
-              {isDraw && <DrawButtonDesktop onClick={handleDrawOptionsClicked} />}
+              {(isDraw || isDrawPlus) && <DrawOptionsButtonDesktop onClick={handleDrawOptionsClicked} />}
             </Box>
 
           </Box>
@@ -621,7 +622,7 @@ export function Composer(props: {
           <ChatModeMenu
             anchorEl={chatModeMenuAnchor} onClose={handleHideChatMode}
             experimental={experimentalLabs}
-            chatModeId={props.chatModeId} onSetChatModeId={handleSetChatModeId}
+            chatModeId={chatModeId} onSetChatModeId={handleSetChatModeId}
           />
         )}
 
