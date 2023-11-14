@@ -13,16 +13,34 @@ export const diagramTypes: FormRadioOption<DiagramType>[] = [
 ];
 
 export const diagramLanguages: FormRadioOption<DiagramLanguage>[] = [
-  { label: 'Mermaid', value: 'mermaid' },
   { label: 'PlantUML', value: 'plantuml' },
+  { label: 'Mermaid (labs)', value: 'mermaid', experimental: true },
 ];
+
+const mermaidMindmapExample = `
+mindmap
+  root((mindmap))
+    Origins
+      Long history
+      ::icon(fa fa-book)
+      Popularisation
+        British popular psychology author Tony Buzan
+    Research
+      On effectiveness<br/>and features
+      On Automatic creation
+        Uses
+            Creative techniques
+    Tools
+      Pen and paper
+      Mermaid
+`.trim();
 
 function mermaidDiagramPrompt(diagramType: DiagramType): { sys: string, usr: string } {
   let promptDetails = diagramType === 'auto'
-    ? 'You create a valid Mermaid diagram markdown ready to be rendered into a diagram or mindmap, ensuring the code contains no external references and all names are properly escaped without spaces. You choose the most suitable diagram string from the following supported types: flowchart, sequence, class, state, erd, gantt, pie, git, or mindmap.'
-    : 'You create a valid Mermaid mindmap markdown ready to be rendered into a mind map, ensuring the code contains no external references and all names are properly escaped without spaces.';
+    ? 'You create a valid Mermaid diagram markdown (```mermaid\\n...), ready to be rendered into a diagram or mindmap. Ensure the code contains no external references, and all names are properly enclosed in double quotes and escaped if necessary. Choose the most suitable diagram type from the following supported types: flowchart, sequence, class, state, erd, gantt, pie, git, or mindmap.'
+    : 'You create a valid Mermaid mindmap markdown (```mermaid\\n...), ready to be rendered into a mind map. Ensure the code contains no external references, and all names are properly enclosed in double quotes and escaped if necessary. For example:\n' + mermaidMindmapExample + '\n';
   return {
-    sys: `You are an AI that writes Mermaid code based on provided text. ${promptDetails}`,
+    sys: `You are an AI that generates Mermaid code based on provided text. ${promptDetails}`,
     usr: `Generate the Mermaid code for a ${diagramType === 'auto' ? 'suitable diagram' : 'mind map'} that represents the preceding assistant message.`,
   };
 }
@@ -31,12 +49,12 @@ function plantumlDiagramPrompt(diagramType: DiagramType): { sys: string, usr: st
   switch (diagramType) {
     case 'auto':
       return {
-        sys: 'You are an AI that writes PlantUML code based on provided text. You create a valid PlantUML string, enclosed by "@startuml" and "@enduml", ready to be rendered into a diagram or mindmap, ensuring the code contains no external references and all names are properly escaped without spaces. You choose the most suitable diagram type—sequence, class, use case, activity, component, state, object, deployment, wireframe, mindmap, gantt, or flowchart.',
+        sys: 'You are an AI that writes PlantUML code based on provided text. You create a valid PlantUML string, enclosed by "```\n@startuml" and "@enduml\n```", ready to be rendered into a diagram or mindmap, ensuring the code contains no external references and all names are properly escaped without spaces. You choose the most suitable diagram type—sequence, class, use case, activity, component, state, object, deployment, wireframe, mindmap, gantt, or flowchart.',
         usr: 'Generate the PlantUML code for the diagram type that best represents the preceding assistant message.',
       };
     case 'mind':
       return {
-        sys: 'You are an AI that writes PlantUML code based on provided text. You create a valid PlantUML string, enclosed by @startmindmap" and "@endmindmap", ready to be rendered into a mind map, ensuring the code contains no external references and all names are properly escaped without spaces.',
+        sys: 'You are an AI that writes PlantUML code based on provided text. You create a valid PlantUML string, enclosed by "```\n@startmindmap" and "@endmindmap\n```", ready to be rendered into a mind map, ensuring the code contains no external references and all names are properly escaped without spaces.',
         usr: 'Generate the PlantUML code for a mind map based on the preceding assistant message.',
       };
   }
@@ -45,7 +63,7 @@ function plantumlDiagramPrompt(diagramType: DiagramType): { sys: string, usr: st
 export function bigDiagramPrompt(diagramType: DiagramType, diagramLanguage: DiagramLanguage, chatSystemPrompt: string, subject: string): VChatMessageIn[] {
   const { sys, usr } = diagramLanguage === 'mermaid' ? mermaidDiagramPrompt(diagramType) : plantumlDiagramPrompt(diagramType);
   return [
-    { role: 'system', content: sys + ' Your output is strictly markdown and nothing else.' },
+    { role: 'system', content: sys },
     { role: 'system', content: chatSystemPrompt },
     { role: 'assistant', content: subject },
     { role: 'user', content: usr },
