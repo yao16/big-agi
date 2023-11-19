@@ -1,22 +1,29 @@
 import * as React from 'react';
 import { shallow } from 'zustand/shallow';
 
-import { FormControl, Radio, RadioGroup, Switch } from '@mui/joy';
+import { Button, FormControl, Radio, RadioGroup, Switch } from '@mui/joy';
 import WidthNormalIcon from '@mui/icons-material/WidthNormal';
 import WidthWideIcon from '@mui/icons-material/WidthWide';
 
 import { FormLabelStart } from '~/common/components/forms/FormLabelStart';
-import { hideOnMobile } from '~/common/app.theme';
 import { isPwa } from '~/common/util/pwaUtils';
+import { useIsMobile } from '~/common/components/useMatchMedia';
 import { useUIPreferencesStore } from '~/common/state/store-ui';
+
+import { ShortcutsModal } from './ShortcutsModal';
 
 
 // configuration
 const SHOW_PURPOSE_FINDER = false;
 
 
-export function AppChatSettings() {
+export function AppChatSettingsUI() {
+
+  // local state
+  const [showShortcuts, setShowShortcuts] = React.useState<boolean>(false);
+
   // external state
+  const isMobile = useIsMobile();
   const {
     centerMode, setCenterMode,
     doubleClickToEdit, setDoubleClickToEdit,
@@ -24,7 +31,6 @@ export function AppChatSettings() {
     renderMarkdown, setRenderMarkdown,
     showPurposeFinder, setShowPurposeFinder,
     zenMode, setZenMode,
-    autosetChatTitle, setAutoSetChatTitle,
   } = useUIPreferencesStore(state => ({
     centerMode: state.centerMode, setCenterMode: state.setCenterMode,
     doubleClickToEdit: state.doubleClickToEdit, setDoubleClickToEdit: state.setDoubleClickToEdit,
@@ -32,7 +38,6 @@ export function AppChatSettings() {
     renderMarkdown: state.renderMarkdown, setRenderMarkdown: state.setRenderMarkdown,
     showPurposeFinder: state.showPurposeFinder, setShowPurposeFinder: state.setShowPurposeFinder,
     zenMode: state.zenMode, setZenMode: state.setZenMode,
-    autosetChatTitle: state.autoSetChatTitle, setAutoSetChatTitle: state.setAutoSetChatTitle,
   }), shallow);
 
   const handleCenterModeChange = (event: React.ChangeEvent<HTMLInputElement>) => setCenterMode(event.target.value as 'narrow' | 'wide' | 'full' || 'wide');
@@ -46,8 +51,6 @@ export function AppChatSettings() {
   const handleRenderMarkdownChange = (event: React.ChangeEvent<HTMLInputElement>) => setRenderMarkdown(event.target.checked);
 
   const handleShowSearchBarChange = (event: React.ChangeEvent<HTMLInputElement>) => setShowPurposeFinder(event.target.checked);
-
-  const handleAutoSetChatTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => setAutoSetChatTitle(event.target.checked);
 
   return <>
 
@@ -83,14 +86,6 @@ export function AppChatSettings() {
               slotProps={{ endDecorator: { sx: { minWidth: 26 } } }} />
     </FormControl>}
 
-    <FormControl orientation='horizontal' sx={{ justifyContent: 'space-between' }}>
-      <FormLabelStart title='Auto Chat Title'
-                      description={autosetChatTitle ? 'LLM Titling' : 'Manual only'} />
-      <Switch checked={autosetChatTitle} onChange={handleAutoSetChatTitleChange}
-              endDecorator={autosetChatTitle ? 'On' : 'Off'}
-              slotProps={{ endDecorator: { sx: { minWidth: 26 } } }} />
-    </FormControl>
-
     <FormControl orientation='horizontal' sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
       <FormLabelStart title='Appearance'
                       description={zenMode === 'clean' ? 'Show senders' : 'Minimal UI'} />
@@ -101,7 +96,7 @@ export function AppChatSettings() {
       </RadioGroup>
     </FormControl>
 
-    {!isPwa() && <FormControl orientation='horizontal' sx={{ ...hideOnMobile, alignItems: 'center', justifyContent: 'space-between' }}>
+    {!isPwa() && !isMobile && <FormControl orientation='horizontal' sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
       <FormLabelStart title='Page Size'
                       description={centerMode === 'full' ? 'Full screen chat' : centerMode === 'narrow' ? 'Narrow chat' : 'Wide'} />
       <RadioGroup orientation='horizontal' value={centerMode} onChange={handleCenterModeChange}>
@@ -110,6 +105,12 @@ export function AppChatSettings() {
         <Radio value='full' label='Full' />
       </RadioGroup>
     </FormControl>}
+
+    {!isMobile && <Button variant='soft' onClick={() => setShowShortcuts(true)} sx={{ ml: 'auto' }}>
+      👉 See Shortcuts
+    </Button>}
+
+    {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)}/>}
 
   </>;
 }
