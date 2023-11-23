@@ -10,14 +10,12 @@ import { GoogleSearchSettings } from '~/modules/google/GoogleSearchSettings';
 import { ProdiaSettings } from '~/modules/prodia/ProdiaSettings';
 
 import { GoodModal } from '~/common/components/GoodModal';
-import { closeLayoutPreferences, openLayoutPreferences, useLayoutPreferencesTab } from '~/common/layout/store-applayout';
+import { closeLayoutPreferences, openLayoutShortcuts, useLayoutPreferencesTab } from '~/common/layout/store-applayout';
 import { settingsGap } from '~/common/app.theme';
-import { useGlobalShortcut } from '~/common/components/useGlobalShortcut';
 import { useIsMobile } from '~/common/components/useMatchMedia';
 
 import { AppChatSettingsAI } from './AppChatSettingsAI';
 import { AppChatSettingsUI } from './AppChatSettingsUI';
-import { ShortcutsModal } from './ShortcutsModal';
 import { UxLabsSettings } from './UxLabsSettings';
 import { VoiceSettings } from './VoiceSettings';
 
@@ -103,13 +101,9 @@ function Topic(props: { title?: string, icon?: string | React.ReactNode, startCo
  */
 export function SettingsModal() {
 
-  // state
-  const [showShortcuts, setShowShortcuts] = React.useState<boolean>(false);
-
   // external state
   const isMobile = useIsMobile();
   const settingsTabIndex = useLayoutPreferencesTab();
-  useGlobalShortcut('p', true, true, false, openLayoutPreferences);
 
   const tabFixSx = { fontFamily: 'body', flex: 1, p: 0, m: 0 };
 
@@ -118,7 +112,7 @@ export function SettingsModal() {
       title='Preferences' strongerTitle
       open={!!settingsTabIndex} onClose={closeLayoutPreferences}
       startButton={isMobile ? undefined : (
-        <Button variant='soft' onClick={() => setShowShortcuts(true)}>
+        <Button variant='soft' onClick={openLayoutShortcuts}>
           👉 See Shortcuts
         </Button>
       )}
@@ -200,8 +194,6 @@ export function SettingsModal() {
       </Tabs>
 
       <Divider />
-
-      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
     </GoodModal>
   );

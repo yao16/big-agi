@@ -26,6 +26,13 @@ const defaultTypeConfig: {
     clickAway: false,
     closeButton: true,
   },
+  title: {
+    color: 'neutral',
+    variant: 'plain',
+    autoHideDuration: 2000,
+    clickAway: false,
+    closeButton: false,
+  },
 };
 
 
@@ -58,8 +65,11 @@ export const ProviderSnacks = (props: { children: React.ReactNode }) => {
         variant={config.variant}
         autoHideDuration={config.autoHideDuration ?? null}
         animationDuration={SNACKBAR_ANIMATION_DURATION}
-        invertedColors
-        anchorOrigin={{ vertical: 'bottom', horizontal: type === 'issue' ? 'center' : 'right' }}
+        invertedColors={config.closeButton}
+        anchorOrigin={{
+          vertical: type === 'title' ? 'top' : 'bottom',
+          horizontal: type === 'title' ? 'center' : 'right',
+        }}
         onClose={(_event, reason) => {
           if (reason === 'timeout' || ((reason === 'clickaway' || reason === 'escapeKeyDown') && config.clickAway)) {
             animateCloseSnackbar();
@@ -75,9 +85,16 @@ export const ProviderSnacks = (props: { children: React.ReactNode }) => {
             <CloseIcon />
           </IconButton>
         )}
-        sx={{
+        sx={theme => ({
+          ...(type === 'title' && {
+            '--Snackbar-inset': '64px',
+            borderRadius: 'md',
+            boxShadow: 'md',
+            bgcolor: `rgba(${theme.vars.palette.neutral.lightChannel} / 0.1)`,
+            backdropFilter: 'blur(6px)',
+          }),
           // '--Snackbar-padding': config.closeButton ? '0.5rem' : '1rem',
-        }}
+        })}
       >
         {message}
       </Snackbar>
