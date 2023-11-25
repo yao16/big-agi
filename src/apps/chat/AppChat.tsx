@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Box } from '@mui/joy';
 import ForkRightIcon from '@mui/icons-material/ForkRight';
 
+import { CmdRunBrowse } from '~/modules/browse/browse.client';
 import { CmdRunProdia } from '~/modules/prodia/prodia.client';
 import { CmdRunReact } from '~/modules/aifn/react/react';
 import { DiagramConfig, DiagramsModal } from '~/modules/aifn/digrams/DiagramsModal';
@@ -10,6 +11,7 @@ import { FlattenerModal } from '~/modules/aifn/flatten/FlattenerModal';
 import { TradeConfig, TradeModal } from '~/modules/trade/TradeModal';
 import { imaginePromptFromText } from '~/modules/aifn/imagine/imaginePromptFromText';
 import { speakText } from '~/modules/elevenlabs/elevenlabs.client';
+import { useBrowseStore } from '~/modules/browse/store-module-browsing';
 import { useModelsStore } from '~/modules/llms/store-llms';
 
 import { ConfirmationModal } from '~/common/components/ConfirmationModal';
@@ -23,12 +25,13 @@ import { ChatDrawerItemsMemo } from './components/applayout/ChatDrawerItems';
 import { ChatDropdowns } from './components/applayout/ChatDropdowns';
 import { ChatMenuItems } from './components/applayout/ChatMenuItems';
 import { ChatMessageList } from './components/ChatMessageList';
-import { CmdAddRoleMessage, extractCommands } from './editors/commands';
+import { CmdAddRoleMessage, CmdHelp, createCommandsHelpMessage, extractCommands } from './editors/commands';
 import { Composer } from './components/composer/Composer';
 import { Ephemerals } from './components/Ephemerals';
 import { usePanesManager } from './components/usePanesManager';
 
 import { runAssistantUpdatingState } from './editors/chat-stream';
+import { runBrowseUpdatingState } from './editors/browse-load';
 import { runImageGenerationUpdatingState } from './editors/image-generate';
 import { runReActUpdatingState } from './editors/react-tangent';
 
@@ -129,11 +132,18 @@ export function AppChat() {
           setMessages(conversationId, history);
           return await runReActUpdatingState(conversationId, prompt, chatLLMId);
         }
+        if (CmdRunBrowse.includes(command) && prompt?.trim() && useBrowseStore.getState().enableCommandBrowse) {
+          setMessages(conversationId, history);
+          return await runBrowseUpdatingState(conversationId, prompt);
+        }
         if (CmdAddRoleMessage.includes(command)) {
           lastMessage.role = command.startsWith('/s') ? 'system' : command.startsWith('/a') ? 'assistant' : 'user';
           lastMessage.sender = 'Bot';
           lastMessage.text = prompt;
           return setMessages(conversationId, history);
+        }
+        if (CmdHelp.includes(command)) {
+          return setMessages(conversationId, [...history, createCommandsHelpMessage()]);
         }
       }
     }
